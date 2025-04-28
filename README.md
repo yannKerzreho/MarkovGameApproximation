@@ -165,13 +165,7 @@ The `nice_picture` function generates:
 
 ## References
 
-1. Hu, J., & Wellman, M. P. (2003). Nash Q-Learning for General-Sum Stochastic Games.
-2. Tuyls, K., et al. (2006). An Evolutionary Dynamical Analysis of Multi-Agent Learning.
-3. Leslie, D. S., & Collins, E. J. (2005). Individual Q-learning in Normal Form Games.
-
-## Contributors
-
-[Your Name] - [Your Contact Information]
+1. WIP
 
 ## License
 
