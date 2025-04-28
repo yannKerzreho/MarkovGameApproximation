@@ -78,12 +78,14 @@ def gain_matrix(g):
 g = 1.5
 states = 4
 tau, epsilon, alpha, gamma = 0.5, 0.1, 0.01, 0.9
-nb_iterations = 4000
+nb_iterations = 1000
 
 # Initialize game environment
 rewards_matrix = np.array([gain_matrix(g)] * states)
-transition_matrix = np.array([[[[1,0,0,0], [0,1,0,0]],
-                              [[0,0,1,0], [0,0,0,1]]]*4)
+transition_matrix = np.array([[[[1, 0, 0, 0],
+                                [0, 1, 0, 0]],
+                               [[0, 0, 1, 0],
+                                [0, 0, 0, 1]]]] * 4)
 
 game = MarkovGame(state_space_size=4, 
                 transition_matrix=transition_matrix,
@@ -98,7 +100,7 @@ reinforcer0 = QTableReinforcer(
     state_space_size=4,
     alpha=alpha, gamma=gamma,
     tau=tau, epsilon=epsilon,
-    initial_Q=Q0.copy()
+    initial_Q=Q0
 )
 
 reinforcer1 = QTableReinforcer(
@@ -106,14 +108,14 @@ reinforcer1 = QTableReinforcer(
     state_space_size=4,
     alpha=alpha, gamma=gamma,
     tau=tau, epsilon=epsilon,
-    initial_Q=Q1.copy()
+    initial_Q=Q1
 )
 
 # Run simulations
 print("Running simulations...")
 simulator = Simulator()
 simulator.run_simulations(game, [reinforcer0, reinforcer1], 
-                        num_simulations=10, num_iterations=nb_iterations)
+                        num_simulations=100, num_iterations=nb_iterations)
 
 # Compute fluid approximation
 print("Calculating fluid approximation...")

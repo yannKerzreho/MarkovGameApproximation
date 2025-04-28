@@ -2,8 +2,8 @@ import numpy as np
 import copy
 from scipy.integrate import solve_ivp
 from typing import Union, Dict, Tuple, List
-from MarkovGame import MarkovGame
-from Reinforcer import Reinforcer, Q
+from Class.MarkovGame import MarkovGame
+from Class.Reinforcer import Reinforcer, Q
 
 class FluidApproximation:
     """

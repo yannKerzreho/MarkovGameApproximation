@@ -1,5 +1,5 @@
 import numpy as np
-from Reinforcer import Reinforcer, Q
+from Class.Reinforcer import Reinforcer, Q
 from scipy.special import logsumexp
 
 class QTableReinforcer(Reinforcer):
