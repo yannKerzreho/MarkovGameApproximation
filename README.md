@@ -34,7 +34,6 @@ markov-game-rl/
 │   ├── FluidApproximation.py # Differential equation solver
 │   └── Qtable.py            # Q-learning implementations
 ├── Utilities.py             # Visualization and helper functions
-└── examples/                # Example scripts
 ```
 
 ## Key Components
