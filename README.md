@@ -2,6 +2,8 @@
 
 This project provides a framework for simulating and analyzing multi-agent reinforcement learning (MARL) in Markov games. It includes implementations of Q-learning agents, a Markov game environment simulator, and fluid approximation methods for theoretical analysis.
 
+The project is not optimised, mainly due to the non-paralleling of simulations and the use of a containing class to allow flexibility over the parameters of the algorithms used [np.Array or dictionary].
+
 ## Features
 
 - **Markov Game Environment**: Define state transitions, joint actions, and reward matrices.
@@ -160,8 +162,6 @@ The `nice_picture` function generates:
 2. Policy probability trajectories
 3. State distribution dynamics
 4. Reward convergence patterns
-
-![Example Visualization](https://via.placeholder.com/600x400?text=Sample+Output+Comparison)
 
 ## References
 

@@ -1,9 +1,10 @@
 import numpy as np
 import copy
-from scipy.integrate import solve_ivp
+from concurrent.futures import ProcessPoolExecutor
+from functools import partial
 from typing import Union, Dict, Tuple, List
 from Class.MarkovGame import MarkovGame
-from Class.Reinforcer import Reinforcer, Q
+from Class.Reinforcer import Q
 
 class Simulator:
     """
@@ -59,6 +60,17 @@ class Simulator:
         """
         # Use Q class operations for running average
         return (mean_Q * sim_count + new_Q) / (sim_count + 1)
+    
+    def _simulate_once(self, game_template, reinforcer_templates, num_iterations, seed):
+        # Create isolated instances for this process
+        game = copy.deepcopy(game_template)
+        reinforcers = [copy.deepcopy(r) for r in reinforcer_templates]
+        np.random.seed(seed)
+
+        game.reset_log()
+        game.set_state(np.random.randint(0, game.state_space_size))
+        game.run(num_iterations, reinforcers)
+        return game.get_logs()
 
     def run_simulations(self, game: MarkovGame, reinforcers: list, 
                        num_simulations: int, num_iterations: int) -> None:
@@ -74,7 +86,6 @@ class Simulator:
         if len(reinforcers) != game.num_players:
             raise ValueError("Number of reinforcers must match number of players")
 
-        # Initialize arrays for storing mean values per iteration
         mean_Q_values = [
             self.initialize_mean_Q(reinforcer.Q, num_iterations)
             for reinforcer in reinforcers
@@ -82,43 +93,40 @@ class Simulator:
         mean_rewards = np.zeros((num_iterations, game.num_players))
         mean_state_counts = np.zeros((num_iterations, game.state_space_size))
 
-        for sim_idx in range(num_simulations):
-            # Create deep copies of reinforcers for this simulation
-            current_reinforcers = [copy.deepcopy(r) for r in reinforcers]
-            
-            # Reset game state
-            game.reset_log()
-            game.set_state(np.random.randint(0, game.state_space_size))
-            
-            # Run simulation
-            game.run(num_iterations, current_reinforcers)
-            sim_log = game.get_logs()
-            self.all_logs.append(sim_log)
+        # Prepare the parallel worker
+        seeds = np.random.randint(0, 1e9, size=num_simulations)
+        with ProcessPoolExecutor() as executor:
+            futures = [executor.submit(
+                self._simulate_once,
+                game,
+                reinforcers,
+                num_iterations,
+                int(seeds[i])
+            ) for i in range(num_simulations)]
 
-            # Update statistics for each iteration
-            for iter_idx in range(num_iterations):
-                # Update rewards
-                mean_rewards[iter_idx] += (
-                    sim_log["rewards"][iter_idx] - mean_rewards[iter_idx]
-                ) / (sim_idx + 1)
+            for sim_idx, future in enumerate(futures):
+                sim_log = future.result()
+                self.all_logs.append(sim_log)
 
-                # Update Q values for each player at each iteration
-                for player_idx, reinforcer in enumerate(current_reinforcers):
-                    mean_Q_values[player_idx][iter_idx] = self.accumulate_Q(
-                        mean_Q_values[player_idx][iter_idx],
-                        sim_log["Q_values"][player_idx][iter_idx],
-                        sim_idx
-                    )
+                for iter_idx in range(num_iterations):
+                    mean_rewards[iter_idx] += (
+                        sim_log["rewards"][iter_idx] - mean_rewards[iter_idx]
+                    ) / (sim_idx + 1)
 
-                # Update state proportions
-                state_idx = sim_log["states"][iter_idx]
-                current_counts = np.zeros(game.state_space_size)
-                current_counts[state_idx] = 1
-                mean_state_counts[iter_idx] += (
-                    current_counts - mean_state_counts[iter_idx]
-                ) / (sim_idx + 1)
+                    for player_idx in range(game.num_players):
+                        mean_Q_values[player_idx][iter_idx] = self.accumulate_Q(
+                            mean_Q_values[player_idx][iter_idx],
+                            sim_log["Q_values"][player_idx][iter_idx],
+                            sim_idx
+                        )
 
-        # Store final statistics
+                    state_idx = sim_log["states"][iter_idx]
+                    current_counts = np.zeros(game.state_space_size)
+                    current_counts[state_idx] = 1
+                    mean_state_counts[iter_idx] += (
+                        current_counts - mean_state_counts[iter_idx]
+                    ) / (sim_idx + 1)
+
         self.final_log["mean_Q"] = mean_Q_values
         self.final_log["mean_rewards"] = mean_rewards
         self.final_log["state_proportions"] = mean_state_counts
