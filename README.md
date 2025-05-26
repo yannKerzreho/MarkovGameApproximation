@@ -64,11 +64,7 @@ Simulate learning dynamics in a 4-state prisoner's dilemma variant:
 
 ```python
 import numpy as np
-from mgap.agents.qtable import QTableReinforcer
-from mgap.agents.reinforcer import Q
-from mgap.environments.markov_game import MarkovGame
-from mgap.solvers.simulator import Simulator
-from mgap.solvers.fluid_approximation import FluidApproximation
+import mgap as mgap
 
 def gain_matrix(g):
     """Prisoner's dilemma payoff matrix"""
@@ -90,15 +86,15 @@ transition_matrix = np.array([[[[1, 0, 0, 0],
                                [[0, 0, 1, 0],
                                 [0, 0, 0, 1]]]] * 4)
 
-game = MarkovGame(state_space_size=4, 
+game = mgap.MarkovGame(state_space_size=4, 
                 transition_matrix=transition_matrix,
                 reward_matrix=rewards_matrix)
 
 # Initialize agents
-Q0 = Q(np.array([[30.]*2]*4))
-Q1 = Q(np.array([[22., 20.]]*4))
+Q0 = mgap.Q(np.array([[30.]*2]*4))
+Q1 = mgap.Q(np.array([[22., 20.]]*4))
 
-reinforcer0 = QTableReinforcer(
+reinforcer0 = mgap.QTableReinforcer(
     action_space_size=2, 
     state_space_size=4,
     alpha=alpha, gamma=gamma,
@@ -106,7 +102,7 @@ reinforcer0 = QTableReinforcer(
     initial_Q=Q0
 )
 
-reinforcer1 = QTableReinforcer(
+reinforcer1 = mgap.QTableReinforcer(
     action_space_size=2,
     state_space_size=4,
     alpha=alpha, gamma=gamma,
@@ -116,7 +112,7 @@ reinforcer1 = QTableReinforcer(
 
 # Run simulations
 print("Running simulations...")
-simulator = Simulator()
+simulator = mgap.Simulator()
 simulator.run_simulations(game, [reinforcer0, reinforcer1], 
                         num_simulations=100, num_iterations=nb_iterations)
 
