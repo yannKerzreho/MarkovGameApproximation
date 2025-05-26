@@ -8,7 +8,7 @@ write_to = "mgap/_version.py"
 [project]
 name = "mgap"
 version = "0.1.0"
-description = "A framework for Markov Game Approximation using Reinforcement Learning"
+description = "A framework for RL-Agent Approximation playing Markov Game "
 authors = [{name = "Yann Kerzreho"}]
 license = {file = "LICENSE"}
 readme = "README.md"
