@@ -2,8 +2,8 @@ import numpy as np
 import copy
 from scipy.integrate import solve_ivp
 from typing import Union, Dict, Tuple, List
-from Class.MarkovGame import MarkovGame
-from Class.Reinforcer import Reinforcer, Q
+from mgap.environments.markov_game import MarkovGame
+from mgap.agents.reinforcer import Reinforcer, Q
 
 class FluidApproximation:
     """
@@ -44,7 +44,7 @@ class FluidApproximation:
 
     def compute_F(self, x: list, S: np.ndarray) -> tuple:
         """
-        Compute the fluid approximation function F(x).
+        Compute the drift of the parameters vector.
         
         :param x: List of Q instances representing current Q-values for each player
         :param S: The state distribution vector as numpy array

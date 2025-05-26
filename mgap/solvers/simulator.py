@@ -3,8 +3,8 @@ import copy
 from concurrent.futures import ProcessPoolExecutor
 from functools import partial
 from typing import Union, Dict, Tuple, List
-from Class.MarkovGame import MarkovGame
-from Class.Reinforcer import Q
+from mgap.environments.markov_game import MarkovGame
+from mgap.agents.reinforcer import Q
 
 class Simulator:
     """

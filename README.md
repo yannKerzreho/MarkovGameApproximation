@@ -1,4 +1,4 @@
-# Reinforcement Learning in Markov Games
+# MGAP - Markov Game Approximation
 
 This project provides a framework for simulating and analyzing multi-agent reinforcement learning (MARL) in Markov games. It includes implementations of Q-learning agents, a Markov game environment simulator, and fluid approximation methods for theoretical analysis.
 
@@ -16,26 +16,28 @@ The project is not optimised, mainly due to the non-paralleling of simulations a
 
 1. Clone repository:
 ```bash
-git clone https://github.com/yourusername/markov-game-rl.git
-cd markov-game-rl
+git clone https://github.com/yannKerzreho/MarkovGameApproximation.git
+cd MarkovGameApproximation
 ```
 
-2. Install requirements:
+2. Install package:
 ```bash
-pip install -r requirements.txt
+pip install -e .
 ```
 
 ## Project Structure
 
 ```
-markov-game-rl/
-├── Class/
-│   ├── Reinforcer.py        # Base reinforcement learning agent
-│   ├── MarkovGame.py        # Markov game environment
-│   ├── Simulator.py         # Multi-run simulation manager
-│   ├── FluidApproximation.py # Differential equation solver
-│   └── Qtable.py            # Q-learning implementations
-├── Utilities.py             # Visualization and helper functions
+MarkovGameApproximation/
+├── mgap/
+│   ├── agents/
+│   │   ├── reinforcer.py           # Base reinforcement learning agent
+│   │   ├── qtable.py               # Q-learning implementations
+│   ├── environments/
+│   │   └── markov_game.py          # Markov game environment
+│   └── solvers/
+│       └── fluid_approximation.py  # ODE generator
+│       └── simulator.py            # Multi-run simulation manager
 ```
 
 ## Key Components
@@ -62,11 +64,11 @@ Simulate learning dynamics in a 4-state prisoner's dilemma variant:
 
 ```python
 import numpy as np
-from Class.MarkovGame import MarkovGame
-from Class.Qtable import QTableReinforcer
-from Class.Simulator import Simulator
-from Class.FluidApproximation import FluidApproximation
-from Class.Reinforcer import Q
+from mgap.agents.qtable import QTableReinforcer
+from mgap.agents.reinforcer import Q
+from mgap.environments.markov_game import MarkovGame
+from mgap.solvers.simulator import Simulator
+from mgap.solvers.fluid_approximation import FluidApproximation
 
 def gain_matrix(g):
     """Prisoner's dilemma payoff matrix"""
@@ -133,7 +135,7 @@ x_solution, S_solution = FA.solve_differential_system_naive(
 
 # Visualize results
 print("Generating visualizations...")
-from Utilities import nice_picture
+from mgap.environments.prisonnier_dilemma.utilities import nice_picture
 nice_picture(simulator.final_log, [reinforcer0, reinforcer1], 
             x_solution, S_solution, t_eval)
 ```

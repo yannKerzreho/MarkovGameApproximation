@@ -1,7 +1,5 @@
-import matplotlib.pyplot as plt
 import numpy as np
-from Class.Reinforcer import Q
-import math
+from mgap.agents.reinforcer import Q
 from scipy.special import logsumexp
 
 def moving_average(data, window_size=5):
