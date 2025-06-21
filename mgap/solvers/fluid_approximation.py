@@ -3,12 +3,11 @@ import copy
 from scipy.integrate import solve_ivp
 from typing import Union, Dict, Tuple, List
 from mgap.environments.markov_game import MarkovGame
-from mgap.agents.reinforcer import Reinforcer, Q
+from mgap.agents.reinforcer import Reinforcer
 
 class FluidApproximation:
     """
     Represents the fluid approximation for a Markov game with reinforcers.
-    Uses Q class for Q-value operations consistently.
 
     Attributes:
         markov_game (MarkovGame): The Markov game being approximated
@@ -46,9 +45,9 @@ class FluidApproximation:
         """
         Compute the drift of the parameters vector.
         
-        :param x: List of Q instances representing current Q-values for each player
+        :param x: List of numpy arrays representing current Q-values for each player
         :param S: The state distribution vector as numpy array
-        :return: Tuple (expected_D, delta_S) where expected_D is list of Q instances 
+        :return: Tuple (expected_D, delta_S) where expected_D is list of numpy arrays 
                 and delta_S is numpy array
         :raises ValueError: If input dimensions are incorrect
         """
@@ -56,27 +55,20 @@ class FluidApproximation:
             raise ValueError("S must have length equal to the state space size")
         if len(x) != self.num_players:
             raise ValueError("Length of x must match number of players")
-        if not all(isinstance(Q_struct, Q) for Q_struct in x):
-            raise TypeError("All elements in x must be Q instances")
+        if not all(isinstance(Q_struct, np.ndarray) for Q_struct in x):
+            raise TypeError("All elements in x must be numpy arrays")
         
-        # Initialize containers using Q class copy operation
-        expected_D = [Q_struct.copy() for Q_struct in x]
-        for D in expected_D:
-            D.fill(0)
-        
+        # Initialize containers
+        expected_D = [np.zeros_like(Q_struct) for Q_struct in x]
         delta_S = np.zeros_like(S)
 
         for i, reinforcer in enumerate(self.reinforcers):
-            reinforcer.Q = x[i].copy()
+            reinforcer.param = x[i].copy()
         
         # Compute for each state
         for state in range(self.state_space_size):
             # Get policies for current state
-
-            policies = [
-                reinforcer.policy(state)
-                for i, reinforcer in enumerate(self.reinforcers)
-            ]
+            policies = [reinforcer.policy(state) for i, reinforcer in enumerate(self.reinforcers)]
             
             # Compute joint policy probabilities
             for joint_actions in np.ndindex(*self.action_space_sizes):
@@ -93,7 +85,7 @@ class FluidApproximation:
                     rewards = self.R[state][joint_actions]
                     D_values = self.compute_D(joint_actions, rewards, x, state)
                     
-                    # Update expected_D using Q class operations
+                    # Update expected_D
                     for i in range(len(expected_D)):
                         expected_D[i] += state_prob * D_values[i]
 
@@ -110,26 +102,25 @@ class FluidApproximation:
         
         :param joint_actions: Tuple of joint actions
         :param rewards: Rewards received by each player
-        :param x: List of Q instances for each player
+        :param x: List of numpy arrays for each player
         :param current_state: Current state index
-        :return: List of D values as Q instances
+        :return: List of D values as numpy arrays
         """
         D = []
         probabilities = self.T[current_state][joint_actions]
 
         for i, reinforcer in enumerate(self.reinforcers):
-            # Initialize D_i using Q class
-            D_i = x[i].copy()
-            D_i.fill(0)
+            # Initialize D_i
+            D_i = np.zeros_like(x[i])
             
             # Compute D values for each possible next state
             for next_state, prob in enumerate(probabilities):
                 if prob > 0:
                     # Create temporary reinforcer with copied Q values
                     temp_reinforcer = copy.deepcopy(reinforcer)
+                    temp_reinforcer.param = x[i].copy()
                     temp_reinforcer.update(i, joint_actions, rewards, current_state, next_state)
-                    # Use Q class operations for difference
-                    D_i += prob * (temp_reinforcer.Q - x[i])
+                    D_i += prob * (temp_reinforcer.param - x[i])
             
             D.append(D_i)
                     
@@ -140,11 +131,11 @@ class FluidApproximation:
         """
         Solves the differential system using solve_ivp.
         
-        :param x0: Initial Q-values as list of Q instances
+        :param x0: Initial Q-values as list of numpy arrays
         :param S0: Initial state distribution as numpy array
         :param t_span: Time span for integration as (t_start, t_end)
         :param t_eval: Points at which to evaluate the solution
-        :return: Tuple (x_solution, S_solution) where x_solution is list of lists of Q instances
+        :return: Tuple (x_solution, S_solution) where x_solution is list of lists of numpy arrays
                 and S_solution is numpy array
         :raises ValueError: If input dimensions are incorrect
         """
@@ -154,14 +145,8 @@ class FluidApproximation:
         if len(S0) != self.state_space_size:
             raise ValueError("Length of S0 must match state space size")
         
-        # Flatten all Q-values and store metadata
-        flattened_x0 = []
-        metadata_list = []
-        
-        for Q_struct in x0:
-            flat_Q, metadata = Q_struct.flatten()
-            flattened_x0.append(flat_Q)
-            metadata_list.append(metadata)
+        # Flatten all Q-values
+        flattened_x0 = [Q_struct.flatten() for Q_struct in x0]
 
         # Combine all flattened arrays
         y0 = np.concatenate(flattened_x0 + [S0])
@@ -171,11 +156,11 @@ class FluidApproximation:
             current_idx = 0
             current_x = []
             
-            # Reconstruct x structures using Q class
-            for metadata in metadata_list:
-                size = metadata['total_size'] if metadata['type'] == 'dict' else metadata['size']
+            # Reconstruct x structures
+            for shape in [Q_struct.shape for Q_struct in x0]:
+                size = np.prod(shape)
                 flat_piece = y[current_idx:current_idx + size]
-                current_x.append(Q.reshape(flat_piece, metadata))
+                current_x.append(flat_piece.reshape(shape))
                 current_idx += size
 
             current_S = y[current_idx:]
@@ -184,28 +169,23 @@ class FluidApproximation:
             expected_D, delta_S = self.compute_F(current_x, current_S)
             
             # Flatten derivatives
-            dx_dt = []
-            for D in expected_D:
-                flat_D, _ = D.flatten()
-                dx_dt.append(flat_D)
+            dx_dt = [D.flatten() for D in expected_D]
 
             return np.concatenate(dx_dt + [delta_S])
 
         # Solve the system
         sol = solve_ivp(system, t_span, y0, t_eval=t_eval, method='RK45')
 
-        # Reconstruct solution using Q class
+        # Reconstruct solution
         x_solution = []
         current_idx = 0
         
-        for metadata in metadata_list:
-            size = metadata['total_size'] if metadata['type'] == 'dict' else metadata['size']
+        for shape in [Q_struct.shape for Q_struct in x0]:
+            size = np.prod(shape)
             flat_piece = sol.y[current_idx:current_idx + size, :]
             
-            # Reshape for each time point using Q class
-            player_solution = []
-            for t in range(len(t_eval)):
-                player_solution.append(Q.reshape(flat_piece[:, t], metadata))
+            # Reshape for each time point
+            player_solution = [flat_piece[:, t].reshape(shape) for t in range(len(t_eval))]
             x_solution.append(player_solution)
             current_idx += size
 
@@ -219,10 +199,10 @@ class FluidApproximation:
         """
         Solves the differential system using solve_ivp.
         
-        :param x0: Initial Q-values as list of Q instances
+        :param x0: Initial Q-values as list of numpy arrays
         :param t_span: Time span for integration as (t_start, t_end)
         :param t_eval: Points at which to evaluate the solution
-        :return: Tuple (x_solution, S_solution) where x_solution is list of lists of Q instances
+        :return: Tuple (x_solution, S_solution) where x_solution is list of lists of numpy arrays
                 and S_solution is numpy array
         :raises ValueError: If input dimensions are incorrect
         """
@@ -230,14 +210,8 @@ class FluidApproximation:
         if len(x0) != self.num_players:
             raise ValueError("Length of x0 must match number of players")
 
-        # Flatten all Q-values and store metadata
-        flattened_x0 = []
-        metadata_list = []
-        
-        for Q_struct in x0:
-            flat_Q, metadata = Q_struct.flatten()
-            flattened_x0.append(flat_Q)
-            metadata_list.append(metadata)
+        # Flatten all Q-values
+        flattened_x0 = [Q_struct.flatten() for Q_struct in x0]
 
         y0 = np.concatenate(flattened_x0)
 
@@ -246,78 +220,62 @@ class FluidApproximation:
             current_idx = 0
             current_x = []
             
-            # Reconstruct x structures using Q class
-            for metadata in metadata_list:
-                size = metadata['total_size'] if metadata['type'] == 'dict' else metadata['size']
+            # Reconstruct x structures
+            for shape in [Q_struct.shape for Q_struct in x0]:
+                size = np.prod(shape)
                 flat_piece = y[current_idx:current_idx + size]
-                current_x.append(Q.reshape(flat_piece, metadata))
+                current_x.append(flat_piece.reshape(shape))
                 current_idx += size
 
             # Compute derivatives
             expected_D = []
 
             for i, reinforcer in enumerate(self.reinforcers):
-                reinforcer.Q = current_x[i].copy()
+                reinforcer.param = current_x[i].copy()
 
             probabilities = self.markov_game.invar_prob(self.reinforcers)
             probabilities = probabilities / probabilities.sum()
 
             for i, reinforcer in enumerate(self.reinforcers):
-
-                D_i = current_x[i].copy()
-                D_i.fill(0)
+                D_i = np.zeros_like(current_x[i])
                 
-                # print(f'Debug : Algo : {i} \n')
-
                 for state in range(self.state_space_size):
                     for joint_actions in np.ndindex(*self.action_space_sizes):
                         for next_state in range(self.state_space_size):
                             rewards = self.R[state][joint_actions]
                             # Create temporary reinforcer with copied Q values
                             temp_reinforcer = copy.deepcopy(reinforcer)
+                            temp_reinforcer.param = current_x[i].copy()
                             temp_reinforcer.update(i, joint_actions, rewards, state, next_state)
-                            # Use Q class operations for difference
-                            # print(f'Debug : state {state} | joint actions {joint_actions} | next state {next_state} \n Proba = {probabilities[state][joint_actions][next_state]}')
-                            D_i += probabilities[state][joint_actions][next_state] * (temp_reinforcer.Q - current_x[i])    
+                            D_i += probabilities[state][joint_actions][next_state] * (temp_reinforcer.param - current_x[i])
                 
-                # print(f'Debug : expected_D = {expected_D} \n')
-
                 expected_D.append(D_i)       
             
             # Flatten derivatives
-            dx_dt = []
-            for D in expected_D:
-                flat_D, _ = D.flatten()
-                dx_dt.append(flat_D)
+            dx_dt = [D.flatten() for D in expected_D]
 
             return np.concatenate(dx_dt)
 
         # Solve the system
         sol = solve_ivp(system, t_span, y0, t_eval=t_eval, method='RK45')
 
-        # Reconstruct solution using Q class
+        # Reconstruct solution
         x_solution = []
         current_idx = 0
         
-        for metadata in metadata_list:
-            size = metadata['total_size'] if metadata['type'] == 'dict' else metadata['size']
+        for shape in [Q_struct.shape for Q_struct in x0]:
+            size = np.prod(shape)
             flat_piece = sol.y[current_idx:current_idx + size, :]
-            
-            # Reshape for each time point using Q class
-            player_solution = []
-            for t in range(len(t_eval)):
-                player_solution.append(Q.reshape(flat_piece[:, t], metadata))
+            player_solution = [flat_piece[:, t].reshape(shape) for t in range(len(t_eval))]
             x_solution.append(player_solution)
             current_idx += size
 
         S_solution = []
-
         for t in range(len(t_eval)):
             for i, reinforcer in enumerate(self.reinforcers):
-                reinforcer.Q = x_solution[i][t].copy()
-
+                reinforcer.param = x_solution[i][t].copy()
             probabilities = self.markov_game.invar_prob(self.reinforcers)
             state_distrib = probabilities.sum(axis=(1,2,3))
-            S_solution.append(state_distrib) 
+            S_solution.append(state_distrib)
 
         return x_solution, np.array(S_solution).T

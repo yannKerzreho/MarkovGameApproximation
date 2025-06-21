@@ -4,7 +4,6 @@ from concurrent.futures import ProcessPoolExecutor
 from functools import partial
 from typing import Union, Dict, Tuple, List
 from mgap.environments.markov_game import MarkovGame
-from mgap.agents.reinforcer import Q
 
 class Simulator:
     """
@@ -27,38 +26,26 @@ class Simulator:
             "state_proportions": []  # State distribution array
         }
 
-    def initialize_mean_Q(self, template_Q: Q, num_iterations: int) -> np.ndarray:
+    def initialize_mean_Q(self, template_Q: np.ndarray, num_iterations: int) -> np.ndarray:
         """
-        Initialize storage for mean Q values using Q class.
+        Initialize storage for mean Q values using numpy arrays.
         
-        :param template_Q: Q instance to use as template
+        :param template_Q: numpy array to use as template (shape: state_space x action_space)
         :param num_iterations: Number of iterations to store
-        :return: Array of Q instances initialized with zeros
+        :return: 3D numpy array (num_iterations x state_space x action_space)
         """
-        # Get flattened representation and metadata
-        flat_template, metadata = template_Q.flatten()
-        
-        # Create zero-initialized array with additional dimension for iterations
-        flat_storage = np.zeros((num_iterations, len(flat_template)))
-        
-        # Create an array of Q instances, one for each iteration
-        mean_Q_array = np.array([
-            Q.reshape(flat_storage[i], metadata.copy())
-            for i in range(num_iterations)
-        ])
-        
-        return mean_Q_array
+        shape = (num_iterations,) + template_Q.shape
+        return np.zeros(shape, dtype=np.float64)
 
-    def accumulate_Q(self, mean_Q: Q, new_Q: Q, sim_count: int) -> Q:
+    def accumulate_Q(self, mean_Q: np.ndarray, new_Q: np.ndarray, sim_count: int) -> np.ndarray:
         """
-        Update running average of Q values using Q class operations.
+        Update running average of Q values using numpy arrays.
         
-        :param mean_Q: Current mean Q values
-        :param new_Q: New Q values to incorporate
+        :param mean_Q: Current mean Q values (2D array)
+        :param new_Q: New Q values to incorporate (2D array)
         :param sim_count: Number of simulations completed
-        :return: Updated mean Q values
+        :return: Updated mean Q values (2D array)
         """
-        # Use Q class operations for running average
         return (mean_Q * sim_count + new_Q) / (sim_count + 1)
     
     def _simulate_once(self, game_template, reinforcer_templates, num_iterations, seed):
@@ -87,7 +74,7 @@ class Simulator:
             raise ValueError("Number of reinforcers must match number of players")
 
         mean_Q_values = [
-            self.initialize_mean_Q(reinforcer.Q, num_iterations)
+            self.initialize_mean_Q(reinforcer.param, num_iterations)
             for reinforcer in reinforcers
         ]
         mean_rewards = np.zeros((num_iterations, game.num_players))

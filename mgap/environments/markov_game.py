@@ -88,7 +88,7 @@ class MarkovGame:
             # Log the current state and Q-values before the round
             self.log["states"].append(self.current_state)
             for i, reinforcer in enumerate(reinforcers):
-                self.log["Q_values"][i].append(reinforcer.Q.copy())
+                self.log["Q_values"][i].append(reinforcer.param.copy())
 
             # Play one round
             joint_actions, rewards = self.play_round(reinforcers)

@@ -1,5 +1,5 @@
 import numpy as np
-from mgap.agents.reinforcer import Reinforcer, Q
+from mgap.agents.reinforcer import Reinforcer
 from scipy.special import logsumexp
 
 class QTableReinforcer(Reinforcer):
@@ -36,16 +36,11 @@ class QTableReinforcer(Reinforcer):
 
         # Handle initial Q-values
         if initial_Q is None:
-            initial_Q = Q(np.zeros((state_space_size, action_space_size), dtype=np.float64))
-        elif not isinstance(initial_Q, Q):
-            initial_Q = Q(initial_Q)
+            initial_Q = np.zeros((state_space_size, action_space_size), dtype=np.float64)
         
         # Ensure Q-values are of float type
-        if isinstance(initial_Q.data, np.ndarray):
-            assert np.issubdtype(initial_Q.data.dtype, np.floating), "Q-table must contain float values"
-        elif isinstance(initial_Q.data, dict):
-            assert all(np.issubdtype(v.dtype, np.floating) for v in initial_Q.data.values()), \
-                "All Q-table values must be floats"
+        if isinstance(initial_Q, np.ndarray):
+            assert np.issubdtype(initial_Q.dtype, np.floating), "Q-table must contain float values"
 
         super().__init__(action_space_size, state_space_size, initial_Q)
 
@@ -59,7 +54,7 @@ class QTableReinforcer(Reinforcer):
         Returns:
             list: Probabilities list.
         """
-        state_Q_values = self.Q.data[current_state]
+        state_Q_values = self.param[current_state]
         Q_scaled = state_Q_values / self.tau
         softmax = np.exp(Q_scaled - logsumexp(Q_scaled))
         return softmax * (1 - self.epsilon) + self.epsilon / len(softmax)  # Epsilon-greedy adjustment
@@ -89,8 +84,8 @@ class QTableReinforcer(Reinforcer):
             next_state (int): The next state of the environment.
         """
         action = joint_actions[indix]
-        td_error = rewards[indix] + self.gamma * np.max(self.Q.data[next_state]) - self.Q.data[current_state, action]
-        self.Q.data[current_state, action] += self.alpha * td_error
+        td_error = rewards[indix] + self.gamma * np.max(self.param[next_state]) - self.param[current_state, action]
+        self.param[current_state, action] += self.alpha * td_error
 
 
 class QTableCounterFactualReinforcer(Reinforcer):
@@ -131,16 +126,11 @@ class QTableCounterFactualReinforcer(Reinforcer):
 
         # Handle initial Q-values
         if initial_Q is None:
-            initial_Q = Q(np.zeros((state_space_size, action_space_size), dtype=np.float64))
-        elif not isinstance(initial_Q, Q):
-            initial_Q = Q(initial_Q)
+            initial_Q = np.zeros((state_space_size, action_space_size), dtype=np.float64)
 
         # Ensure Q-values are of float type
-        if isinstance(initial_Q.data, np.ndarray):
-            assert np.issubdtype(initial_Q.data.dtype, np.floating), "Q-table must contain float values"
-        elif isinstance(initial_Q.data, dict):
-            assert all(np.issubdtype(v.dtype, np.floating) for v in initial_Q.data.values()), \
-                "All Q-table values must be floats"
+        if isinstance(initial_Q, np.ndarray):
+            assert np.issubdtype(initial_Q.dtype, np.floating), "Q-table must contain float values"
 
         super().__init__(action_space_size, state_space_size, initial_Q)
 
@@ -154,7 +144,7 @@ class QTableCounterFactualReinforcer(Reinforcer):
         Returns:
             list: Probabilities list.
         """
-        state_Q_values = self.Q.data[current_state]
+        state_Q_values = self.param[current_state]
         exp_Q = np.exp(state_Q_values / self.tau)  # Compute exponentiated Q-values
         soft_max_probabilities = exp_Q / exp_Q.sum()  # Normalize to create probabilities
         soft_max_probabilities = np.nan_to_num(soft_max_probabilities, nan=1, posinf=1e-10, neginf=1e-10)
@@ -179,7 +169,7 @@ class QTableCounterFactualReinforcer(Reinforcer):
         probabilities = self.transition_matrix[current_state][tuple(joint_actions)]
         nextmaxQ = 0
         for next_state, prob in enumerate(probabilities):
-            nextmaxQ += prob * np.max(self.Q.data[next_state])
+            nextmaxQ += prob * np.max(self.param[next_state])
         
         return nextmaxQ
         
@@ -202,6 +192,6 @@ class QTableCounterFactualReinforcer(Reinforcer):
             td_error = (
                 self.rewards_matrix[current_state][tuple(joint_actions)][indix] 
                 + self.gamma * nextmaxQ
-                - self.Q.data[current_state, action]
+                - self.param[current_state, action]
             )
-            self.Q.data[current_state, action] += self.alpha * td_error
+            self.param[current_state, action] += self.alpha * td_error

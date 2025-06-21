@@ -91,8 +91,8 @@ game = mgap.MarkovGame(state_space_size=4,
                 reward_matrix=rewards_matrix)
 
 # Initialize agents
-Q0 = mgap.Q(np.array([[30.]*2]*4))
-Q1 = mgap.Q(np.array([[22., 20.]]*4))
+Q0 = np.array([[30.]*2]*4)
+Q1 = np.array([[22., 20.]]*4)
 
 reinforcer0 = mgap.QTableReinforcer(
     action_space_size=2, 
@@ -114,17 +114,16 @@ reinforcer1 = mgap.QTableReinforcer(
 print("Running simulations...")
 simulator = mgap.Simulator()
 simulator.run_simulations(game, [reinforcer0, reinforcer1], 
-                        num_simulations=100, num_iterations=nb_iterations)
+                        num_simulations=10, num_iterations=nb_iterations)
 
 # Compute fluid approximation
 print("Calculating fluid approximation...")
-FA = FluidApproximation(game, [reinforcer0, reinforcer1])
+FA = mgap.FluidApproximation(game, [reinforcer0, reinforcer1])
 t_span = (0, nb_iterations)
-t_eval = np.linspace(0, nb_iterations, 1000)
+t_eval = np.linspace(0, nb_iterations, 100)
 
-x_solution, S_solution = FA.solve_differential_system_naive(
+x_solution, S_solution = FA.solve_differential_system_invariant(
     [Q0.copy(), Q1.copy()],
-    np.array([0.25]*4),
     t_span,
     t_eval
 )
@@ -135,31 +134,6 @@ from mgap.environments.prisonnier_dilemma.utilities import nice_picture
 nice_picture(simulator.final_log, [reinforcer0, reinforcer1], 
             x_solution, S_solution, t_eval)
 ```
-
-## Key Features Demonstrated
-
-1. **Game Setup**:
-   - 4-state prisoner's dilemma variant
-   - State transitions based on previous joint actions
-   - Parametric payoff matrix with cooperation incentive `g`
-
-2. **Agent Configuration**:
-   - Different initial Q-values for agents
-   - Softmax exploration with temperature `tau`
-   - Epsilon-greedy exploration rate
-
-3. **Analysis Methods**:
-   - Monte Carlo simulations with 10 runs
-   - Differential equation-based fluid approximation
-   - Comparative visualization of both approaches
-
-## Output Interpretation
-
-The `nice_picture` function generates:
-1. Q-value evolution comparison
-2. Policy probability trajectories
-3. State distribution dynamics
-4. Reward convergence patterns
 
 ## References
 
