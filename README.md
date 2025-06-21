@@ -2,7 +2,7 @@
 
 This project provides a framework for simulating and analyzing multi-agent reinforcement learning (MARL) in Markov games. It includes implementations of Q-learning agents, a Markov game environment simulator, and fluid approximation methods for theoretical analysis.
 
-The project is not optimised, mainly due to the non-paralleling of simulations and the use of a containing class to allow flexibility over the parameters of the algorithms used [np.Array or dictionary].
+The project is not optimised.
 
 ## Features
 
@@ -13,16 +13,8 @@ The project is not optimised, mainly due to the non-paralleling of simulations a
 - **Visualization Tools**: Compare simulation results with fluid approximations.
 
 ## Installation
-
-1. Clone repository:
 ```bash
-git clone https://github.com/yannKerzreho/MarkovGameApproximation.git
-cd MarkovGameApproximation
-```
-
-2. Install package:
-```bash
-pip install -e .
+pip install git+https://github.com/yannKerzreho/MarkovGameApproximation.git
 ```
 
 ## Project Structure
@@ -40,23 +32,6 @@ MarkovGameApproximation/
 │       └── simulator.py            # Multi-run simulation manager
 ```
 
-## Key Components
-
-### 1. Markov Game Environment
-Defines game dynamics through:
-- State transition matrix
-- Joint action reward matrix
-- Multi-agent interaction logic
-
-### 2. Q-learning Agents
-Two implementations:
-- **QTableReinforcer**: Standard Q-learning
-- **QTableCounterFactualReinforcer**: Counterfactual updates
-
-### 3. Fluid Approximation
-Solves coupled differential equations representing:
-- Q-value evolution
-- State distribution dynamics
 
 ## Example: Prisoner's Dilemma Evolution
 
