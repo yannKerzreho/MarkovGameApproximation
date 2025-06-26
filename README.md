@@ -112,7 +112,7 @@ nice_picture(simulator.final_log, [reinforcer0, reinforcer1],
 
 ## References
 
-1. WIP
+1. Yann Kerzreho. Homogenization of Multi-agent Learning Dynamics in Finite-state Markov Games. 2025. ⟨hal-05129706⟩
 
 ## License
 
